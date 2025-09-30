@@ -4,6 +4,7 @@ use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    BString, BrdbSchemaError,
     schema::as_brdb::{AsBrdbIter, AsBrdbValue, BrdbArrayIter},
     wrapper::{BrdbComponent, Brick, BrickType},
 };
@@ -91,6 +92,56 @@ impl BrdbSchemaGlobalData {
     pub fn add_entity_type(&mut self, type_name: &str) {
         self.entity_type_names.insert(type_name.to_string());
     }
+
+    pub fn basic_brick_asset_by_index(&self, index: usize) -> Result<BString, BrdbSchemaError> {
+        Ok(self
+            .basic_brick_asset_names
+            .get_index(index as usize)
+            .ok_or_else(|| {
+                BrdbSchemaError::UnknownAsset("basic_brick_asset_name".to_string(), index)
+            })?
+            .to_owned()
+            .into())
+    }
+
+    pub fn procedural_brick_asset_by_index(
+        &self,
+        index: usize,
+    ) -> Result<BString, BrdbSchemaError> {
+        Ok(self
+            .procedural_brick_asset_names
+            .get_index(index as usize)
+            .ok_or_else(|| {
+                BrdbSchemaError::UnknownAsset("procedural_brick_asset_name".to_string(), index)
+            })?
+            .to_owned()
+            .into())
+    }
+
+    pub fn material_asset_by_index(&self, index: usize) -> Result<BString, BrdbSchemaError> {
+        Ok(self
+            .material_asset_names
+            .get_index(index as usize)
+            .ok_or_else(|| BrdbSchemaError::UnknownAsset("material_asset_name".to_string(), index))?
+            .to_owned()
+            .into())
+    }
+
+    /// `proc_brick_starting_index` needs to exist because the type ids of brick assets are
+    /// stored in the GlobalData, and the type ids of procedural
+    /// bricks are assigned starting from the end of the basic brick
+    /// asset names.
+    ///
+    /// When new brick assets are added, the length of the basic
+    /// brick asset names will increase, and the type ids of procedural
+    /// bricks in older chunks will not match the new
+    /// basic brick asset names.
+    ///
+    /// This offset allows older chunks to properly load, assuming the global
+    /// data does not change the order of brick asset names (by external tools)
+    pub fn proc_brick_starting_index(&self) -> u32 {
+        self.basic_brick_asset_names.len() as u32
+    }
 }
 
 impl AsBrdbValue for BrdbSchemaGlobalData {
@@ -110,7 +161,7 @@ impl AsBrdbValue for BrdbSchemaGlobalData {
             "ComponentWirePortNames" => self.component_wire_port_names.as_brdb_iter(),
             // BRSavedPrimaryAssetId is automatically inferred from (&str, &str)
             "ExternalAssetReferences" => self.external_asset_references.as_brdb_iter(),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         })
     }
 }

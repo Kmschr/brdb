@@ -2,15 +2,16 @@ use std::{
     cmp::Ordering,
     collections::HashMap,
     fmt::{Debug, Display},
+    sync::Arc,
 };
 
 use crate::{
-    assets,
+    BrdbSchemaError, assets,
     schema::{
         BrdbSchemaGlobalData, BrdbValue,
         as_brdb::{AsBrdbIter, AsBrdbValue, BrdbArrayIter},
     },
-    wrapper::{BString, BitFlags, BrdbComponent},
+    wrapper::{BString, BitFlags, BrdbComponent, Position},
 };
 
 pub struct Brick {
@@ -170,6 +171,7 @@ pub struct Collision {
     pub weapon: bool,
     pub interact: bool,
     pub tool: bool,
+    pub physics: bool,
 }
 
 impl Default for Collision {
@@ -179,6 +181,7 @@ impl Default for Collision {
             weapon: true,
             interact: true,
             tool: true,
+            physics: true,
         }
     }
 }
@@ -276,7 +279,74 @@ impl From<(u8, u8, u8)> for Color {
     }
 }
 
-impl AsBrdbValue for Color {
+impl Default for Color {
+    fn default() -> Self {
+        Self {
+            r: 255,
+            g: 255,
+            b: 255,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct SavedBrickColor {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8,
+}
+
+impl SavedBrickColor {
+    pub fn new(color: Color, alpha: u8) -> Self {
+        Self {
+            r: color.r,
+            g: color.g,
+            b: color.b,
+            a: alpha,
+        }
+    }
+    pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b, a: 255 }
+    }
+
+    #[inline]
+    pub const fn color(&self) -> Color {
+        Color {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+        }
+    }
+
+    pub const fn entity_default() -> Self {
+        Self {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        }
+    }
+}
+
+impl From<Color> for SavedBrickColor {
+    fn from(color: Color) -> Self {
+        Self::rgb(color.r, color.g, color.b)
+    }
+}
+
+impl Default for SavedBrickColor {
+    fn default() -> Self {
+        Self {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 5,
+        }
+    }
+}
+
+impl AsBrdbValue for SavedBrickColor {
     fn as_brdb_struct_prop_value(
         &self,
         schema: &crate::schema::BrdbSchema,
@@ -288,18 +358,35 @@ impl AsBrdbValue for Color {
             "R" => Ok(&self.r),
             "G" => Ok(&self.g),
             "B" => Ok(&self.b),
-            _ => unreachable!(),
+            "A" => Ok(&self.a),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
     }
 }
 
-impl Default for Color {
-    fn default() -> Self {
-        Self {
-            r: 255,
-            g: 255,
-            b: 255,
-        }
+impl TryFrom<&BrdbValue> for SavedBrickColor {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: &BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            r: value.prop("R")?.as_brdb_u8()?,
+            g: value.prop("G")?.as_brdb_u8()?,
+            b: value.prop("B")?.as_brdb_u8()?,
+            a: value.prop("A")?.as_brdb_u8()?,
+        })
+    }
+}
+
+impl TryFrom<BrdbValue> for SavedBrickColor {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            r: value.prop("R")?.as_brdb_u8()?,
+            g: value.prop("G")?.as_brdb_u8()?,
+            b: value.prop("B")?.as_brdb_u8()?,
+            a: value.prop("A")?.as_brdb_u8()?,
+        })
     }
 }
 
@@ -373,157 +460,6 @@ impl Ord for BrickType {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialOrd, Eq, PartialEq)]
-pub struct Position {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
-}
-
-impl Position {
-    pub const ZERO: Self = Self::new(0, 0, 0);
-    pub const ONE: Self = Self::new(1, 1, 1);
-    pub const CHUNK_SIZE: Self = Self::new(CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
-    pub const CHUNK_HALF: Self = Self::new(CHUNK_HALF, CHUNK_HALF, CHUNK_HALF);
-    pub const X: Self = Self::new(1, 0, 0);
-    pub const Y: Self = Self::new(0, 1, 0);
-    pub const Z: Self = Self::new(0, 0, 1);
-    pub const NORTH: Self = Self::new(0, -1, 0);
-    pub const SOUTH: Self = Self::new(0, 1, 0);
-    pub const EAST: Self = Self::new(1, 0, 0);
-    pub const WEST: Self = Self::new(-1, 0, 0);
-    pub const UP: Self = Self::new(0, 0, 1);
-    pub const DOWN: Self = Self::new(0, 0, -1);
-    pub const fn new(x: i32, y: i32, z: i32) -> Self {
-        Self { x, y, z }
-    }
-    pub fn to_relative(self) -> (ChunkIndex, RelativePosition) {
-        // Brick positions are from -1024 to 1023 in a chunk
-        // A brick at (0, 0, 0) is positioned at -1024, -1024, -1024 in the chunk (0, 0, 0)
-        (
-            ChunkIndex {
-                x: self.x.div_euclid(CHUNK_SIZE) as i16,
-                y: self.y.div_euclid(CHUNK_SIZE) as i16,
-                z: self.z.div_euclid(CHUNK_SIZE) as i16,
-            },
-            RelativePosition {
-                x: (self.x.rem_euclid(CHUNK_SIZE) - CHUNK_HALF) as i16,
-                y: (self.y.rem_euclid(CHUNK_SIZE) - CHUNK_HALF) as i16,
-                z: (self.z.rem_euclid(CHUNK_SIZE) - CHUNK_HALF) as i16,
-            },
-        )
-    }
-
-    pub fn from_relative(chunk: ChunkIndex, pos: RelativePosition) -> Self {
-        Position {
-            x: chunk.x as i32 * CHUNK_SIZE + (CHUNK_SIZE / 2) + pos.x as i32,
-            y: chunk.y as i32 * CHUNK_SIZE + (CHUNK_SIZE / 2) + pos.y as i32,
-            z: chunk.z as i32 * CHUNK_SIZE + (CHUNK_SIZE / 2) + pos.z as i32,
-        }
-    }
-}
-impl std::ops::Neg for Position {
-    type Output = Self;
-
-    fn neg(self) -> Self::Output {
-        Self {
-            x: -self.x,
-            y: -self.y,
-            z: -self.z,
-        }
-    }
-}
-impl std::ops::Add for Position {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self::Output {
-        Self {
-            x: self.x + other.x,
-            y: self.y + other.y,
-            z: self.z + other.z,
-        }
-    }
-}
-impl std::ops::AddAssign for Position {
-    fn add_assign(&mut self, other: Self) {
-        self.x += other.x;
-        self.y += other.y;
-        self.z += other.z;
-    }
-}
-impl std::ops::Sub for Position {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self::Output {
-        Self {
-            x: self.x - other.x,
-            y: self.y - other.y,
-            z: self.z - other.z,
-        }
-    }
-}
-impl std::ops::SubAssign for Position {
-    fn sub_assign(&mut self, other: Self) {
-        self.x -= other.x;
-        self.y -= other.y;
-        self.z -= other.z;
-    }
-}
-impl std::ops::Mul<i32> for Position {
-    type Output = Self;
-
-    fn mul(self, scalar: i32) -> Self::Output {
-        Self {
-            x: self.x * scalar,
-            y: self.y * scalar,
-            z: self.z * scalar,
-        }
-    }
-}
-impl std::ops::MulAssign<i32> for Position {
-    fn mul_assign(&mut self, scalar: i32) {
-        self.x *= scalar;
-        self.y *= scalar;
-        self.z *= scalar;
-    }
-}
-impl std::ops::Div<i32> for Position {
-    type Output = Self;
-
-    fn div(self, scalar: i32) -> Self::Output {
-        Self {
-            x: self.x / scalar,
-            y: self.y / scalar,
-            z: self.z / scalar,
-        }
-    }
-}
-impl std::ops::DivAssign<i32> for Position {
-    fn div_assign(&mut self, scalar: i32) {
-        self.x /= scalar;
-        self.y /= scalar;
-        self.z /= scalar;
-    }
-}
-
-impl From<(i32, i32, i32)> for Position {
-    fn from((x, y, z): (i32, i32, i32)) -> Self {
-        Self { x, y, z }
-    }
-}
-
-impl Ord for Position {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.z.cmp(&other.z) {
-            Ordering::Equal => match self.y.cmp(&other.y) {
-                Ordering::Equal => self.x.cmp(&other.x),
-                ord => ord,
-            },
-            ord => ord,
-        }
-    }
-}
-
 pub const CHUNK_SIZE: i32 = 2048;
 pub const CHUNK_HALF: i32 = CHUNK_SIZE / 2;
 
@@ -556,7 +492,7 @@ impl AsBrdbValue for ChunkIndex {
             "X" => Ok(&self.x),
             "Y" => Ok(&self.y),
             "Z" => Ok(&self.z),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
     }
 }
@@ -564,6 +500,18 @@ impl TryFrom<&BrdbValue> for ChunkIndex {
     type Error = crate::errors::BrdbSchemaError;
 
     fn try_from(value: &BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            x: value.prop("X")?.as_brdb_i16()?,
+            y: value.prop("Y")?.as_brdb_i16()?,
+            z: value.prop("Z")?.as_brdb_i16()?,
+        })
+    }
+}
+
+impl TryFrom<BrdbValue> for ChunkIndex {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: BrdbValue) -> Result<Self, Self::Error> {
         Ok(Self {
             x: value.prop("X")?.as_brdb_i16()?,
             y: value.prop("Y")?.as_brdb_i16()?,
@@ -604,6 +552,30 @@ impl From<BrickSize> for Position {
     }
 }
 
+impl TryFrom<&BrdbValue> for BrickSize {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: &BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            x: value.prop("X")?.as_brdb_u16()?,
+            y: value.prop("Y")?.as_brdb_u16()?,
+            z: value.prop("Z")?.as_brdb_u16()?,
+        })
+    }
+}
+
+impl TryFrom<BrdbValue> for BrickSize {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            x: value.prop("X")?.as_brdb_u16()?,
+            y: value.prop("Y")?.as_brdb_u16()?,
+            z: value.prop("Z")?.as_brdb_u16()?,
+        })
+    }
+}
+
 impl Ord for BrickSize {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.z.cmp(&other.z) {
@@ -628,7 +600,7 @@ impl AsBrdbValue for BrickSize {
             "X" => Ok(&self.x),
             "Y" => Ok(&self.y),
             "Z" => Ok(&self.z),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
     }
 }
@@ -652,8 +624,20 @@ impl AsBrdbValue for RelativePosition {
             "X" => Ok(&self.x),
             "Y" => Ok(&self.y),
             "Z" => Ok(&self.z),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
+    }
+}
+
+impl TryFrom<&BrdbValue> for RelativePosition {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: &BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            x: value.prop("X")?.as_brdb_i16()?,
+            y: value.prop("Y")?.as_brdb_i16()?,
+            z: value.prop("Z")?.as_brdb_i16()?,
+        })
     }
 }
 
@@ -729,13 +713,36 @@ impl AsBrdbValue for BrickSizeCounter {
         match field {
             "AssetIndex" => Ok(&self.asset_index),
             "NumSizes" => Ok(&self.num_sizes),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
     }
 }
 
-#[derive(Default)]
+impl TryFrom<&BrdbValue> for BrickSizeCounter {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: &BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            asset_index: value.prop("AssetIndex")?.as_brdb_u32()?,
+            num_sizes: value.prop("NumSizes")?.as_brdb_u32()?,
+        })
+    }
+}
+
+impl TryFrom<BrdbValue> for BrickSizeCounter {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: BrdbValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            asset_index: value.prop("AssetIndex")?.as_brdb_u32()?,
+            num_sizes: value.prop("NumSizes")?.as_brdb_u32()?,
+        })
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct BrickChunkSoA {
+    /// The number of basic bricks at the time of saving this chunk.
     pub procedural_brick_starting_index: u32,
     pub brick_size_counters: Vec<BrickSizeCounter>,
     pub brick_sizes: Vec<BrickSize>,
@@ -749,10 +756,11 @@ pub struct BrickChunkSoA {
     pub collision_flags_weapon: BitFlags,
     pub collision_flags_interaction: BitFlags,
     pub collision_flags_tool: BitFlags,
+    pub collision_flags_physics: BitFlags,
     pub visibility_flags: BitFlags,
     pub material_indices: Vec<u8>,
     // RGB + Material intensity
-    pub colors_and_alphas: Vec<(u8, u8, u8, u8)>,
+    pub colors_and_alphas: Vec<SavedBrickColor>,
     // A map of (asset_index, size) to the index in the brick_sizes vector
     size_index_map: HashMap<(u32, BrickSize), u32>,
     // The number of procedural brick sizes
@@ -760,8 +768,9 @@ pub struct BrickChunkSoA {
 }
 
 impl BrickChunkSoA {
-    /// Add a brick to the chunk. All basic bricks must be added before procedural bricks.
-    pub(super) fn add_brick(&mut self, global_data: &BrdbSchemaGlobalData, brick: &Brick) {
+    /// Add a brick to the chunk. Brick asset types cannot change after adding the first brick or
+    /// it will break the world
+    pub fn add_brick(&mut self, global_data: &BrdbSchemaGlobalData, brick: &Brick) {
         use BrickType::*;
 
         // Handle adding the asset type first
@@ -836,6 +845,7 @@ impl BrickChunkSoA {
         self.collision_flags_interaction
             .push(brick.collision.interact);
         self.collision_flags_tool.push(brick.collision.tool);
+        self.collision_flags_physics.push(brick.collision.physics);
         self.visibility_flags.push(brick.visible);
 
         self.material_indices.push(
@@ -845,12 +855,85 @@ impl BrickChunkSoA {
                 .unwrap() as u8, // Unwrap safety: The material is added to the global data before adding bricks.
         );
 
-        self.colors_and_alphas.push((
-            brick.color.r,
-            brick.color.g,
-            brick.color.b,
-            brick.material_intensity,
-        ));
+        self.colors_and_alphas
+            .push(SavedBrickColor::new(brick.color, brick.material_intensity));
+    }
+
+    /// Convert the SoA into an iterator of bricks.
+    /// The `chunk_index` is required to convert relative positions to absolute positions.
+    /// The `global_data` is required to look up asset names by index.
+    pub fn iter_bricks(
+        &self,
+        chunk_index: ChunkIndex,
+        global_data: Arc<BrdbSchemaGlobalData>,
+    ) -> impl Iterator<Item = Result<Brick, BrdbSchemaError>> {
+        let proc_brick_index = self.procedural_brick_starting_index as usize;
+
+        // Zip the brick size counters with the brick sizes
+        let proc_brick_sizes = self
+            .brick_sizes
+            .iter()
+            .copied()
+            .zip(
+                // repeat the asset index based on the number of sizes for each asset
+                self.brick_size_counters
+                    .iter()
+                    .flat_map(|c| (0..c.num_sizes).map(|_| c.asset_index)),
+            )
+            .collect::<Vec<_>>();
+
+        self.brick_type_indices
+            .iter()
+            .enumerate()
+            .map(move |(i, &ty_index)| {
+                let ty_index = ty_index as usize;
+
+                let asset = if ty_index < proc_brick_index {
+                    BrickType::Basic(global_data.basic_brick_asset_by_index(ty_index)?)
+                } else {
+                    // Lookup the procedural brick size by an index offset by the number of basic brick types
+                    let size_index = ty_index.saturating_sub(proc_brick_index);
+                    let (size, asset_index) =
+                        proc_brick_sizes.get(size_index).ok_or_else(|| {
+                            BrdbSchemaError::Wrapped(
+                                "Procedural brick with index".to_string(),
+                                Box::new(BrdbSchemaError::ArrayIndexOutOfBounds {
+                                    index: size_index,
+                                    len: self.brick_sizes.len(),
+                                }),
+                            )
+                        })?;
+
+                    let asset =
+                        global_data.procedural_brick_asset_by_index(*asset_index as usize)?;
+                    BrickType::Procedural { asset, size: *size }
+                };
+
+                let position = Position::from_relative(chunk_index, self.relative_positions[i]);
+                let (direction, rotation) = byte_to_orientation(self.orientations[i]);
+                let color = self.colors_and_alphas[i];
+                Ok(Brick {
+                    id: None,
+                    asset,
+                    position,
+                    direction,
+                    rotation,
+                    collision: Collision {
+                        player: self.collision_flags_player.get(i),
+                        weapon: self.collision_flags_weapon.get(i),
+                        interact: self.collision_flags_interaction.get(i),
+                        tool: self.collision_flags_tool.get(i),
+                        physics: self.collision_flags_physics.get(i),
+                    },
+                    visible: self.visibility_flags.get(i),
+                    owner_index: Some(self.owner_indices[i] as usize),
+                    color: color.color(),
+                    material: global_data
+                        .material_asset_by_index(self.material_indices[i] as usize)?,
+                    material_intensity: color.a,
+                    components: Vec::new(), // Components are not stored in the brick chunk
+                })
+            })
     }
 }
 
@@ -867,8 +950,9 @@ impl AsBrdbValue for BrickChunkSoA {
             "CollisionFlags_Weapon" => Ok(&self.collision_flags_weapon),
             "CollisionFlags_Interaction" => Ok(&self.collision_flags_interaction),
             "CollisionFlags_Tool" => Ok(&self.collision_flags_tool),
+            "CollisionFlags_Physics" => Ok(&self.collision_flags_physics),
             "VisibilityFlags" => Ok(&self.visibility_flags),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
     }
 
@@ -887,8 +971,51 @@ impl AsBrdbValue for BrickChunkSoA {
             "Orientations" => Ok(self.orientations.as_brdb_iter()),
             "MaterialIndices" => Ok(self.material_indices.as_brdb_iter()),
             "ColorsAndAlphas" => Ok(self.colors_and_alphas.as_brdb_iter()),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
+    }
+}
+
+impl TryFrom<&BrdbValue> for BrickChunkSoA {
+    type Error = crate::errors::BrdbSchemaError;
+
+    fn try_from(value: &BrdbValue) -> Result<Self, Self::Error> {
+        let mut base = BrickChunkSoA {
+            procedural_brick_starting_index: value
+                .prop("ProceduralBrickStartingIndex")?
+                .as_brdb_u32()?,
+            brick_size_counters: value.prop("BrickSizeCounters")?.try_into()?,
+            brick_sizes: value.prop("BrickSizes")?.try_into()?,
+            brick_type_indices: value.prop("BrickTypeIndices")?.try_into()?,
+            owner_indices: value.prop("OwnerIndices")?.try_into()?,
+            relative_positions: value.prop("RelativePositions")?.try_into()?,
+            orientations: value.prop("Orientations")?.try_into()?,
+            collision_flags_player: value.prop("CollisionFlags_Player")?.try_into()?,
+            collision_flags_weapon: value.prop("CollisionFlags_Weapon")?.try_into()?,
+            collision_flags_interaction: value.prop("CollisionFlags_Interaction")?.try_into()?,
+            collision_flags_tool: value.prop("CollisionFlags_Tool")?.try_into()?,
+            collision_flags_physics: value.prop("CollisionFlags_Physics")?.try_into()?,
+            visibility_flags: value.prop("VisibilityFlags")?.try_into()?,
+            material_indices: value.prop("MaterialIndices")?.try_into()?,
+            colors_and_alphas: value.prop("ColorsAndAlphas")?.try_into()?,
+            size_index_map: HashMap::new(),
+            num_brick_sizes: 0,
+        };
+        for size_counter in &base.brick_size_counters {
+            for j in 0..size_counter.num_sizes {
+                let size_index =
+                    (base.brick_sizes.len() - size_counter.num_sizes as usize + j as usize) as u32;
+                base.size_index_map.insert(
+                    (
+                        size_counter.asset_index,
+                        base.brick_sizes[size_index as usize],
+                    ),
+                    size_index,
+                );
+            }
+            base.num_brick_sizes += size_counter.num_sizes;
+        }
+        Ok(base)
     }
 }
 
@@ -912,7 +1039,7 @@ impl AsBrdbValue for BrickChunkIndexSoA {
             "NumBricks" => Ok(self.num_bricks.as_brdb_iter()),
             "NumComponents" => Ok(self.num_components.as_brdb_iter()),
             "NumWires" => Ok(self.num_wires.as_brdb_iter()),
-            _ => unreachable!(),
+            n => unimplemented!("unimplemented struct field {n}"),
         }
     }
 }
