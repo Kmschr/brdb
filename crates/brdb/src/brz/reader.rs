@@ -3,7 +3,7 @@ use std::ops::Deref;
 use indexmap::IndexMap;
 
 use crate::{
-    BrFsReader, Brz, BrzIndexData,
+    BrFsReader, Brz, BrzIndexData, FoundFile,
     errors::BrFsError,
     fs::BrFs,
     tables::{BrBlob, BrFile, BrFolder},
@@ -171,7 +171,11 @@ impl<T: AsRef<Brz>> BrFsReader for BrzIndex<T> {
         }
     }
 
-    fn find_file(&self, parent_id: Option<i64>, name: &str) -> Result<Option<i64>, BrFsError> {
+    fn find_file(
+        &self,
+        parent_id: Option<i64>,
+        name: &str,
+    ) -> Result<Option<FoundFile>, BrFsError> {
         let parent = parent_id.map(|id| id as i32).unwrap_or(-1);
         if let Some(&index) = self.files_lut.get(&(parent, name.to_string())) {
             // Get the blob id for the file
@@ -181,10 +185,20 @@ impl<T: AsRef<Brz>> BrFsReader for BrzIndex<T> {
                 .index_data
                 .file_content_ids
                 .get(index)
-                .and_then(|&id| (id > -1).then_some(id as i64)))
+                .and_then(|&id| (id > -1).then_some(FoundFile::new(id as i64, 0))))
         } else {
             Ok(None)
         }
+    }
+
+    fn find_file_at_revision(
+        &self,
+        parent_id: Option<i64>,
+        name: &str,
+        _date: i64,
+    ) -> Result<Option<FoundFile>, BrFsError> {
+        // BRZ files don't support revisions, so just call find_file
+        self.find_file(parent_id, name)
     }
 
     fn find_blob(&self, blob_id: i64) -> Result<BrBlob, BrFsError> {

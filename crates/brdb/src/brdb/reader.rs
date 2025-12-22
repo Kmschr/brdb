@@ -1,6 +1,6 @@
 use rusqlite::params;
 
-use crate::{BrFsReader, Brdb, errors::BrFsError, fs::BrFs, tables::BrBlob};
+use crate::{BrFsReader, Brdb, FoundFile, errors::BrFsError, fs::BrFs, tables::BrBlob};
 
 impl BrFsReader for Brdb {
     fn get_fs(&self) -> Result<BrFs, BrFsError> {
@@ -27,10 +27,14 @@ impl BrFsReader for Brdb {
         }
     }
 
-    fn find_file(&self, parent_id: Option<i64>, name: &str) -> Result<Option<i64>, BrFsError> {
+    fn find_file(
+        &self,
+        parent_id: Option<i64>,
+        name: &str,
+    ) -> Result<Option<FoundFile>, BrFsError> {
         let res = self.conn.query_one(
             format!(
-                "SELECT content_id FROM files WHERE {} AND name = ?1 AND deleted_at IS NULL;",
+                "SELECT content_id, created_at FROM files WHERE {} AND name = ?1 AND deleted_at IS NULL;",
                 match parent_id {
                     Some(parent_id) => format!("parent_id = {parent_id}"),
                     None => "parent_id IS NULL".to_owned(),
@@ -38,10 +42,37 @@ impl BrFsReader for Brdb {
             )
             .as_str(),
             params![name],
-            |row| row.get(0),
+            |row| Ok(FoundFile::new(row.get(0)?, row.get(1)?)),
         );
         match res {
-            Ok(file_id) => Ok(Some(file_id)),
+            Ok(found_file) => Ok(Some(found_file)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(BrFsError::Sqlite(e)),
+        }
+    }
+
+    fn find_file_at_revision(
+        &self,
+        parent_id: Option<i64>,
+        name: &str,
+        date: i64,
+    ) -> Result<Option<FoundFile>, BrFsError> {
+        let res = self.conn.query_one(
+            format!(
+                "SELECT content_id, created_at FROM files
+                WHERE {} AND name = ?1 AND created_at <= ?2 AND (deleted_at IS NULL OR deleted_at > ?2)
+                ORDER BY created_at ASC LIMIT 1;",
+                match parent_id {
+                    Some(parent_id) => format!("parent_id = {parent_id}"),
+                    None => "parent_id IS NULL".to_owned(),
+                }
+            )
+            .as_str(),
+            params![name, date],
+            |row| Ok(FoundFile::new(row.get(0)?, row.get(1)?)),
+        );
+        match res {
+            Ok(found_file) => Ok(Some(found_file)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(BrFsError::Sqlite(e)),
         }
