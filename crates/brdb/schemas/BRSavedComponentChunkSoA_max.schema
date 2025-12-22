@@ -1,0 +1,494 @@
+enum EBrickAxis {
+    EBrickAxis::X = 0,
+    EBrickAxis::Y = 1,
+    EBrickAxis::Z = 2,
+    EBrickAxis::MAX = 3,
+}
+enum EBrickDirection {
+    EBrickDirection::X_Positive = 0,
+    EBrickDirection::X_Negative = 1,
+    EBrickDirection::Y_Positive = 2,
+    EBrickDirection::Y_Negative = 3,
+    EBrickDirection::Z_Positive = 4,
+    EBrickDirection::Z_Negative = 5,
+    EBrickDirection::MAX = 6,
+}
+enum EBRInventoryEntryPlanType {
+    EBRInventoryEntryPlanType::Nothing = 0,
+    EBRInventoryEntryPlanType::Brick = 1,
+    EBRInventoryEntryPlanType::Entity = 2,
+    EBRInventoryEntryPlanType::Item = 3,
+    EBRInventoryEntryPlanType::EBRInventoryEntryPlanType_MAX = 4,
+}
+enum EBRPawnCollisionChannel {
+    EBRPawnCollisionChannel::Channel1 = 0,
+    EBRPawnCollisionChannel::Channel2 = 1,
+    EBRPawnCollisionChannel::Channel3 = 2,
+    EBRPawnCollisionChannel::Channel4 = 3,
+    EBRPawnCollisionChannel::EBRPawnCollisionChannel_MAX = 4,
+}
+struct BrickComponentData_AudioEmitter {
+    bEnabled: bool,
+    AudioDescriptor: object,
+    VolumeMultiplier: f32,
+    PitchMultiplier: f32,
+    InnerRadius: f32,
+    MaxDistance: f32,
+    bSpatialization: bool,
+    FocusAzimuth: f32,
+    NonFocusAzimuth: f32,
+    NonFocusVolumeAttenuation: f32,
+}
+struct BrickComponentData_Bearing {
+    bLimitAngle: bool,
+    LimitAngle: f32,
+    bAnglesArePercentages: bool,
+    Damping: f32,
+}
+struct BrickComponentData_Button {
+    PressSound: object,
+    ReleaseSound: object,
+    bAllowNearbyInteraction: bool,
+    bHiddenInteraction: bool,
+    PromptCustomLabel: str,
+}
+struct BrickComponentData_CheckPoint {
+    bRotatePlayerGravityOnSpawn: bool,
+}
+struct BrickComponentData_Damage {
+    Message: str,
+    ConsoleTag: str,
+}
+struct BrickComponentData_Interact {
+    InteractSound: object,
+    Message: str,
+    ConsoleTag: str,
+    bAllowNearbyInteraction: bool,
+    bHiddenInteraction: bool,
+    PromptCustomLabel: str,
+}
+struct BrickComponentData_Internal_CharacterZoneEvent {
+}
+struct BrickComponentData_Internal_ReadBrickGrid {
+}
+struct BrickComponentData_Internal_ZoneEvent {
+}
+struct BrickComponentData_Motor {
+    bEnabled: bool,
+    Speed: f32,
+    Power: f32,
+    bLimitAngle: bool,
+    LimitAngle: f32,
+    bAnglesArePercentages: bool,
+    Damping: f32,
+}
+struct BrickComponentData_MotorSlider {
+    bEnabled: bool,
+    Speed: f32,
+    Power: f32,
+    bPositionsArePercentages: bool,
+    Damping: f32,
+}
+struct BrickComponentData_OneShotAudioEmitter {
+    AudioDescriptor: object,
+    VolumeMultiplier: f32,
+    PitchMultiplier: f32,
+    InnerRadius: f32,
+    MaxDistance: f32,
+    bSpatialization: bool,
+    bEnableRepeat: bool,
+    RepeatTime: f32,
+    RepeatVariance: f32,
+}
+struct BrickComponentData_Rerouter {
+}
+struct BrickComponentData_Servo {
+    bEnabled: bool,
+    TargetAngle: f32,
+    Power: f32,
+    ActiveDamping: f32,
+    ForceLimit: f32,
+    bLimitAngle: bool,
+    LimitAngle: f32,
+    bAnglesArePercentages: bool,
+    Damping: f32,
+}
+struct BrickComponentData_ServoSlider {
+    bEnabled: bool,
+    TargetPosition: f32,
+    Power: f32,
+    TopSpeed: f32,
+    Exponent: f32,
+    bPositionsArePercentages: bool,
+    Damping: f32,
+}
+struct BrickComponentData_Slider {
+    bPositionsArePercentages: bool,
+    Damping: f32,
+}
+struct BrickComponentData_SpawnPoint {
+    bRotatePlayerGravityOnSpawn: bool,
+    bEnable: bool,
+}
+struct BrickComponentData_Switch {
+    bEnabled: bool,
+    InteractSound: object,
+    bAllowNearbyInteraction: bool,
+    bHiddenInteraction: bool,
+    PromptCustomLabel: str,
+}
+struct BrickComponentData_Target {
+    OnTime: f32,
+}
+struct BrickComponentData_TeleportDestination {
+}
+struct BrickComponentData_Touch {
+    BeginTouchSound: object,
+    EndTouchSound: object,
+}
+struct BrickComponentData_WireGraph_Exec_Character_SetTempPermission {
+    PermissionTagStr: str,
+    bPermissionEnable: bool,
+}
+struct BrickComponentData_WireGraph_Exec_Character_ShowHint {
+    HintTitle: str,
+    HintText: str,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_PlayAudioAt {
+    AudioDescriptor: object,
+    VolumeMultiplier: f32,
+    PitchMultiplier: f32,
+    InnerRadius: f32,
+    MaxDistance: f32,
+    bSpatialization: bool,
+}
+struct BrickComponentData_WireGraph_Exec_Gamemode_EndRound {
+}
+struct BrickComponentData_WireGraph_Exec_Var_EditOrGet {
+    Value: wire_graph_variant,
+}
+struct BrickComponentData_WireGraph_ExecBranch {
+}
+struct BrickComponentData_WireGraph_ExecUnion {
+}
+struct BrickComponentData_WireGraph_Expr_Bool_Bool {
+    bInput: bool,
+}
+struct BrickComponentData_WireGraph_Expr_BoolBool_Bool {
+    bInputA: bool,
+    bInputB: bool,
+}
+struct BrickComponentData_WireGraph_Expr_Compare {
+    InputA: wire_graph_variant,
+    InputB: wire_graph_variant,
+}
+struct BrickComponentData_WireGraph_Expr_EdgeDetector {
+    Input: f64,
+    bPulseOnRisingEdge: bool,
+    bPulseOnFallingEdge: bool,
+}
+struct BrickComponentData_WireGraph_Expr_Float_Float {
+    Input: f64,
+}
+struct BrickComponentData_WireGraph_Expr_Int_Int {
+    Input: i64,
+}
+struct BrickComponentData_WireGraph_Expr_IntInt_Int {
+    InputA: i64,
+    InputB: i64,
+}
+struct BrickComponentData_WireGraph_Expr_MathBlend {
+    Blend: f64,
+    InputA: wire_graph_prim_math_variant,
+    InputB: wire_graph_prim_math_variant,
+}
+struct BrickComponentData_WireGraph_Expr_MathCompare {
+    InputA: wire_graph_prim_math_variant,
+    InputB: wire_graph_prim_math_variant,
+}
+struct BrickComponentData_WireGraph_Expr_PrimMathVariantPrimMathVariant_PrimMathVariant {
+    InputA: wire_graph_prim_math_variant,
+    InputB: wire_graph_prim_math_variant,
+}
+struct BrickComponentData_WireGraph_Fake_CharacterEvent {
+}
+struct BrickComponentData_WireGraph_Fake_RoundEvent {
+    RoundNumber: i32,
+}
+struct BrickComponentData_WireGraphPseudo_BufferSeconds {
+    SecondsToWait: f32,
+    ZeroSecondsToWait: f32,
+    CurrentTime: f32,
+    Input: wire_graph_variant,
+    Output: wire_graph_variant,
+    Buffered: wire_graph_variant,
+    Queued: wire_graph_variant,
+    bHasQueued: bool,
+}
+struct BrickComponentData_WireGraphPseudo_BufferTicks {
+    TicksToWait: i32,
+    ZeroTicksToWait: i32,
+    CurrentTicks: i32,
+    Input: wire_graph_variant,
+    Output: wire_graph_variant,
+    Buffered: wire_graph_variant,
+    Queued: wire_graph_variant,
+    bHasQueued: bool,
+}
+struct BrickComponentData_WireGraphPseudo_Var {
+    Value: wire_graph_variant,
+}
+struct BrickComponentWireControl_DriveAndSteer {
+}
+struct BrickComponentWirePlayerInput {
+}
+struct BrickComponentWirePortControl_TeleportDestination {
+}
+struct BRSavedBrickComponentTypeCounter {
+    TypeIndex: u32,
+    NumInstances: u32,
+}
+struct Color {
+    B: u8,
+    G: u8,
+    R: u8,
+    A: u8,
+}
+struct IntVector {
+    X: i32,
+    Y: i32,
+    Z: i32,
+}
+struct Quat4f {
+    X: f32,
+    Y: f32,
+    Z: f32,
+    W: f32,
+}
+struct Rotator {
+    Pitch: f64,
+    Yaw: f64,
+    Roll: f64,
+}
+struct Rotator3f {
+    Pitch: f32,
+    Yaw: f32,
+    Roll: f32,
+}
+struct Vector {
+    X: f64,
+    Y: f64,
+    Z: f64,
+}
+struct Vector3f {
+    X: f32,
+    Y: f32,
+    Z: f32,
+}
+struct BrickComponentData_BrickPropertyChanger {
+    bVisibility: bool,
+    bCollisionEnabled: bool,
+    bCollisionEnabled_Player: bool,
+    bCollisionEnabled_Player1: bool,
+    bCollisionEnabled_Player2: bool,
+    bCollisionEnabled_Player3: bool,
+    bCollisionEnabled_Weapon: bool,
+    bCollisionEnabled_Interaction: bool,
+    bCollisionEnabled_Physics: bool,
+    Color: Color,
+    MaterialAlpha: u8,
+}
+struct BrickComponentData_Internal_InputSplitter {
+    PlayerInput: BrickComponentWirePlayerInput,
+}
+struct BrickComponentData_ItemSpawn {
+    PickupClass: class,
+    bPickupEnabled: bool,
+    bPickupRespawnOnMinigameReset: bool,
+    PickupMinigameResetRespawnDelay: f32,
+    bPickupAutoDisableOnPickup: bool,
+    PickupRespawnTime: f32,
+    PickupOffsetDirection: EBrickDirection,
+    PickupOffsetDistance: f32,
+    PickupRotation: Rotator3f,
+    PickupScale: f32,
+    bPickupAnimationEnabled: bool,
+    PickupAnimationAxis: EBrickAxis,
+    bPickupAnimationAxisLocal: bool,
+    PickupSpinSpeed: f32,
+    PickupBobSpeed: f32,
+    PickupBobHeight: f32,
+    PickupAnimationPhase: f32,
+}
+struct BrickComponentData_Joint_Wheel {
+    Control_DriveAndSteer: BrickComponentWireControl_DriveAndSteer,
+    bEnabled: bool,
+    DriveSpeed: f32,
+    DrivePower: f32,
+    bSteerEnabled: bool,
+    Steer: f32,
+    SteerLimitDegree: f32,
+    SteerPower: f32,
+    bSuspensionEnabled: bool,
+    SuspensionStiffness: f32,
+    SuspensionDamping: f32,
+    JointDistance: i32,
+    bDriveWhenNotAttachedToEngine: bool,
+    bCanBrake: bool,
+    bAllowEngineSteerCorrect: bool,
+    Damping: f32,
+}
+struct BrickComponentData_PointLight {
+    bMatchBrickShape: bool,
+    bEnabled: bool,
+    Brightness: f32,
+    Radius: f32,
+    Color: Color,
+    bUseBrickColor: bool,
+    bCastShadows: bool,
+}
+struct BrickComponentData_Seat {
+    PlayerInput: BrickComponentWirePlayerInput,
+    bIsOccupied: bool,
+    ExitOffset: IntVector,
+    bAllowNearbyInteraction: bool,
+    bHiddenInteraction: bool,
+    PromptCustomLabel: str,
+}
+struct BrickComponentData_SpotLight {
+    Rotation: Rotator3f,
+    InnerConeAngle: f32,
+    OuterConeAngle: f32,
+    bEnabled: bool,
+    Brightness: f32,
+    Radius: f32,
+    Color: Color,
+    bUseBrickColor: bool,
+    bCastShadows: bool,
+}
+struct BrickComponentData_WeightBrick {
+    Mass: f32,
+    MassSize: IntVector,
+    MassOffset: IntVector,
+}
+struct BrickComponentData_WheelEngine {
+    bEnabled: bool,
+    bEnableManualControl: bool,
+    ManualInput_Drive: f32,
+    ManualInput_Steer: f32,
+    bManualInput_Brake: bool,
+    PlayerInput: BrickComponentWirePlayerInput,
+    Control_DriveAndSteer: BrickComponentWireControl_DriveAndSteer,
+    CustomMass: f32,
+    CustomMassVerticalOffset: f32,
+    DriveInterpSpeed: f32,
+    DriveSpeed: f32,
+    DriveAcceleratingPowerMultiplier: f32,
+    DriveBrakingPowerMultiplier: f32,
+    DriveDampingMultiplier: f32,
+    SteerPowerMultiplier: f32,
+    SteerInterpSpeed: f32,
+    SteerLimitDegree: f32,
+    CenterOfSteering: f32,
+    bTankSteering: bool,
+    TankSteerSpeedMultiplier: f32,
+    WaterDriveForce: f32,
+    WaterSteeringForce: f32,
+    AudioDescriptor: object,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_AddLocationRotation {
+    Vector: Vector,
+    Rotation: Rotator,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_AddVelocity {
+    Vector: Vector,
+    Rotation: Vector,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_RelativeTeleport {
+    Source: BrickComponentWirePortControl_TeleportDestination,
+    Destination: BrickComponentWirePortControl_TeleportDestination,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_SetGravityDirection {
+    Rotation: Rotator,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_SetLocation {
+    Vector: Vector,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_SetLocationRotation {
+    Vector: Vector,
+    Rotation: Rotator,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_SetRotation {
+    Rotation: Rotator,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_SetVelocity {
+    Vector: Vector,
+    Rotation: Vector,
+}
+struct BrickComponentData_WireGraph_Exec_Entity_Teleport {
+    Destination: BrickComponentWirePortControl_TeleportDestination,
+}
+struct BrickTypeNetWrapper {
+    BrickAsset: object,
+    ProceduralSize: IntVector,
+}
+struct BRPlayerPartCustomizationV3 {
+    PartDescriptor: object,
+    DecalDescriptor: object,
+    SocketName: str,
+    Colors: Color[],
+}
+struct BRSavedComponentChunkSoA {
+    ComponentTypeCounters: BRSavedBrickComponentTypeCounter[],
+    ComponentBrickIndices: u32[],
+    JointBrickIndices: u32[],
+    JointEntityReferences: u32[],
+    JointInitialRelativeOffsets: Vector3f[flat],
+    JointInitialRelativeRotations: Quat4f[flat],
+}
+struct BRInventoryEntryPlan {
+    Type: EBRInventoryEntryPlanType,
+    BrickTypeIfBrick: BrickTypeNetWrapper,
+    EntityTypeIfEntity: class,
+    ItemTypeIfItem: class,
+}
+struct BRPlayerAvatarCustomizationV3 {
+    Parts: BRPlayerPartCustomizationV3[],
+}
+struct BrickComponentData_BotSpawn {
+    RespawnTime: f32,
+    CorpseTimeout: f32,
+    GunSkill: f32,
+    Agression: f32,
+    ReactionTime: f32,
+    MovementRandomness: f32,
+    RunSpeed: f32,
+    HealthMultiplier: f32,
+    Jumpyness: f32,
+    MovementAmount: f32,
+    AttackMovementAmount: f32,
+    AggroRange: f32,
+    AttackDamageMultiplier: f32,
+    bCanJump: bool,
+    bBackVision: bool,
+    bVisionRaycasting: bool,
+    bCanTargetPlayers: bool,
+    bCanTargetBots: bool,
+    bActiveBot: bool,
+    bSpawnEnable: bool,
+    bDeleteBot: bool,
+    MoveTarget: Vector,
+    MovementGoalDummy: BrickComponentWirePortControl_TeleportDestination,
+    BotName: str,
+    Skin: BRPlayerAvatarCustomizationV3,
+    TeamCollisionChannel: EBRPawnCollisionChannel,
+    bTeamCollision: bool,
+    bTeamCollision1: bool,
+    bTeamCollision2: bool,
+    bTeamCollision3: bool,
+    BotWeapon: class,
+}
+struct BrickComponentData_WireGraph_Exec_Character_SetInventoryEntry {
+    Slot: i32,
+    EntryPlan: BRInventoryEntryPlan,
+}

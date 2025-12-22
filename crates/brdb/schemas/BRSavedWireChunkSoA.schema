@@ -1,0 +1,32 @@
+struct BRSavedBitFlags {
+    Flags: u8[flat],
+}
+struct BRSavedChunk3DIndex {
+    X: i16,
+    Y: i16,
+    Z: i16,
+}
+struct BRSavedLocalWirePortSource {
+    BrickIndexInChunk: u32,
+    ComponentTypeIndex: u16,
+    PortIndex: u16,
+}
+struct BRSavedWirePortTarget {
+    BrickIndexInChunk: u32,
+    ComponentTypeIndex: u16,
+    PortIndex: u16,
+}
+struct BRSavedRemoteWirePortSource {
+    GridPersistentIndex: u32,
+    ChunkIndex: BRSavedChunk3DIndex,
+    BrickIndexInChunk: u32,
+    ComponentTypeIndex: u16,
+    PortIndex: u16,
+}
+struct BRSavedWireChunkSoA {
+    RemoteWireSources: BRSavedRemoteWirePortSource[],
+    LocalWireSources: BRSavedLocalWirePortSource[],
+    RemoteWireTargets: BRSavedWirePortTarget[],
+    LocalWireTargets: BRSavedWirePortTarget[],
+    PendingPropagationFlags: BRSavedBitFlags,
+}

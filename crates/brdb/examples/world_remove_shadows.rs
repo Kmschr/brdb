@@ -17,11 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for index in db.entity_chunk_index()? {
         for e in db.entity_chunk(index)? {
             // Ensure the chunk is a dynamic brick grid
-            if !e
-                .data
-                .get_schema_struct()
-                .is_some_and(|s| s.0.as_ref() == "Entity_DynamicBrickGrid")
-            {
+            if !e.is_brick_grid() {
                 continue;
             }
             let Some(id) = e.id else {

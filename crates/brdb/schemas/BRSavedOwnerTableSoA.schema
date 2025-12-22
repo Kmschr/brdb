@@ -1,0 +1,15 @@
+struct BRGuid {
+    A: u32,
+    B: u32,
+    C: u32,
+    D: u32,
+}
+struct BRSavedOwnerTableSoA {
+    UserIds: BRGuid[flat],
+    UserNames: str[],
+    DisplayNames: str[],
+    EntityCounts: u32[],
+    BrickCounts: u32[],
+    ComponentCounts: u32[],
+    WireCounts: u32[],
+}

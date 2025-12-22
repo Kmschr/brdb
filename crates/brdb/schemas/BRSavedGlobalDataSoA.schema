@@ -1,0 +1,15 @@
+struct BRSavedPrimaryAssetId {
+    PrimaryAssetType: str,
+    PrimaryAssetName: str,
+}
+struct BRSavedGlobalDataSoA {
+    EntityTypeNames: str[],
+    EntityDataClassNames: str[],
+    BasicBrickAssetNames: str[],
+    ProceduralBrickAssetNames: str[],
+    MaterialAssetNames: str[],
+    ComponentTypeNames: str[],
+    ComponentDataStructNames: str[],
+    ComponentWirePortNames: str[],
+    ExternalAssetReferences: BRSavedPrimaryAssetId[],
+}

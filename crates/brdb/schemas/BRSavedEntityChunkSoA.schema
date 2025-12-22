@@ -1,0 +1,48 @@
+struct BRSavedBitFlags {
+    Flags: u8[flat],
+}
+struct BRSavedBrickColor {
+    R: u8,
+    G: u8,
+    B: u8,
+    A: u8,
+}
+struct BRSavedEntityTypeCounter {
+    TypeIndex: u32,
+    NumEntities: u32,
+}
+struct Quat4f {
+    X: f32,
+    Y: f32,
+    Z: f32,
+    W: f32,
+}
+struct Vector3f {
+    X: f32,
+    Y: f32,
+    Z: f32,
+}
+struct BRSavedEntityColors {
+    Color0: BRSavedBrickColor,
+    Color1: BRSavedBrickColor,
+    Color2: BRSavedBrickColor,
+    Color3: BRSavedBrickColor,
+    Color4: BRSavedBrickColor,
+    Color5: BRSavedBrickColor,
+    Color6: BRSavedBrickColor,
+    Color7: BRSavedBrickColor,
+}
+struct BRSavedEntityChunkSoA {
+    TypeCounters: BRSavedEntityTypeCounter[],
+    PersistentIndices: u32[],
+    OwnerIndices: u32[],
+    Locations: Vector3f[flat],
+    Rotations: Quat4f[flat],
+    WeldParentFlags: BRSavedBitFlags,
+    PhysicsLockedFlags: BRSavedBitFlags,
+    PhysicsSleepingFlags: BRSavedBitFlags,
+    WeldParentIndices: u32[],
+    LinearVelocities: Vector3f[flat],
+    AngularVelocities: Vector3f[flat],
+    ColorsAndAlphas: BRSavedEntityColors[flat],
+}

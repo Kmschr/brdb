@@ -11,7 +11,7 @@ use std::{
 
 use crate::{
     AsBrdbValue, BString, BrFsError, BrdbComponent, BrickChunkSoA, ChunkIndex, ComponentChunkSoA,
-    Entity, EntityChunkIndexSoA, EntityChunkSoA,
+    Entity, EntityChunkIndexSoA, EntityChunkSoA, IntVector,
     assets::LiteralComponent,
     errors::{BrError, BrdbSchemaError},
     lookup_entity_struct_name,
@@ -63,6 +63,8 @@ where
 #[derive(Debug, Clone, Copy)]
 pub struct ChunkMeta {
     pub index: ChunkIndex,
+    pub chunk_offset: IntVector,
+    pub chunk_size: i32,
     pub num_bricks: u32,
     pub num_wires: u32,
     pub num_components: u32,
@@ -177,10 +179,21 @@ impl<T> BrReader<T> {
             })
             .collect::<Result<IndexSet<_>, BrdbSchemaError>>()?;
 
+        let entity_type_names = str_set("EntityTypeNames")?;
+
         Ok(Arc::new(BrdbSchemaGlobalData {
             external_asset_types,
             external_asset_references,
-            entity_type_names: str_set("EntityTypeNames")?,
+            // Handle entity data class names fallback
+            entity_data_class_names: if mps_struct.contains_key("EntityDataClassNames") {
+                str_set("EntityDataClassNames")?
+            } else {
+                entity_type_names
+                    .iter()
+                    .map(|n| lookup_entity_struct_name(n).unwrap_or("Unknown").to_owned())
+                    .collect()
+            },
+            entity_type_names,
             basic_brick_asset_names: str_set("BasicBrickAssetNames")?,
             procedural_brick_asset_names: str_set("ProceduralBrickAssetNames")?,
             material_asset_names: str_set("MaterialAssetNames")?,
@@ -432,6 +445,15 @@ impl<T> BrReader<T> {
         let num_bricks = brick_index.prop("NumBricks")?;
         let num_wires = brick_index.prop("NumWires")?;
         let num_components = brick_index.prop("NumComponents")?;
+        let chunk_offsets = brick_index
+            .contains_key("ChunkOffsets")
+            .then(|| brick_index.prop("ChunkOffsets"))
+            .transpose()?;
+        let chunk_sizes = brick_index
+            .contains_key("ChunkSizes")
+            .then(|| brick_index.prop("ChunkSizes"))
+            .transpose()?;
+
         let chunk_indices = brick_index
             .prop("Chunk3DIndices")?
             .as_array()?
@@ -440,6 +462,16 @@ impl<T> BrReader<T> {
             .map(|(i, s)| {
                 Ok(ChunkMeta {
                     index: s.try_into()?,
+                    chunk_offset: chunk_offsets
+                        .map(|f| f.index_unwrap(i)?.try_into())
+                        .transpose()?
+                        // Defaults for old worlds
+                        .unwrap_or_else(|| IntVector::new(1024, 1024, 1024)),
+                    chunk_size: chunk_sizes
+                        .map(|f| f.index_unwrap(i)?.as_brdb_i32())
+                        .transpose()?
+                        // Defaults for old worlds
+                        .unwrap_or(2048),
                     num_bricks: num_bricks.index_unwrap(i)?.as_brdb_u32()?,
                     num_wires: num_wires.index_unwrap(i)?.as_brdb_u32()?,
                     num_components: num_components.index_unwrap(i)?.as_brdb_u32()?,
@@ -549,7 +581,10 @@ impl<T> BrReader<T> {
                 .get_index(counter.type_index as usize)
                 .unwrap_or(&illegal);
 
-            let struct_name = lookup_entity_struct_name(type_name);
+            let struct_name = global_data
+                .entity_data_class_names
+                .get_index(counter.type_index as usize);
+
             for i in 0..counter.num_entities {
                 let data: Arc<Box<dyn BrdbComponent>> = if let Some(struct_name) = struct_name {
                     let value = buf.read_brdb(&schema, struct_name).map_err(|e| {
@@ -611,7 +646,10 @@ impl<T> BrReader<T> {
                 .get_index(counter.type_index as usize)
                 .unwrap_or(&illegal);
 
-            let Some(struct_name) = lookup_entity_struct_name(type_name) else {
+            let Some(struct_name) = global_data
+                .entity_data_class_names
+                .get_index(counter.type_index as usize)
+            else {
                 entity_data.push(None);
                 continue;
             };

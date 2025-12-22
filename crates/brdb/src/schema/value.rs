@@ -27,6 +27,13 @@ impl BrdbStruct {
         self.properties.get(&key)
     }
 
+    pub fn contains_key(&self, prop: impl AsRef<str>) -> bool {
+        let Some(key) = self.schema.intern.get(prop.as_ref()) else {
+            return false;
+        };
+        self.properties.contains_key(&key)
+    }
+
     pub fn get_name(&self) -> &str {
         self.schema
             .intern
@@ -284,6 +291,13 @@ impl BrdbValue {
                 prop.to_owned(),
             )
         })
+    }
+
+    pub fn contains_key(&self, prop: impl AsRef<str>) -> bool {
+        let Some(s) = self.as_struct().ok() else {
+            return false;
+        };
+        s.contains_key(prop)
     }
 
     pub fn as_array(&self) -> Result<&Vec<BrdbValue>, BrdbSchemaError> {

@@ -12,6 +12,7 @@ use crate::{
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct BrdbSchemaGlobalData {
     pub entity_type_names: IndexSet<String>,
+    pub entity_data_class_names: IndexSet<String>,
     pub basic_brick_asset_names: IndexSet<String>,
     pub procedural_brick_asset_names: IndexSet<String>,
     pub material_asset_names: IndexSet<String>,
@@ -153,6 +154,7 @@ impl AsBrdbValue for BrdbSchemaGlobalData {
     ) -> Result<BrdbArrayIter, crate::errors::BrdbSchemaError> {
         Ok(match prop_name.get(schema).unwrap() {
             "EntityTypeNames" => self.entity_type_names.as_brdb_iter(),
+            "EntityDataClassNames" => self.entity_data_class_names.as_brdb_iter(),
             "BasicBrickAssetNames" => self.basic_brick_asset_names.as_brdb_iter(),
             "ProceduralBrickAssetNames" => self.procedural_brick_asset_names.as_brdb_iter(),
             "MaterialAssetNames" => self.material_asset_names.as_brdb_iter(),

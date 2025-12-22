@@ -1,0 +1,23 @@
+struct BRSavedBrickComponentTypeCounter {
+    TypeIndex: u32,
+    NumInstances: u32,
+}
+struct Quat4f {
+    X: f32,
+    Y: f32,
+    Z: f32,
+    W: f32,
+}
+struct Vector3f {
+    X: f32,
+    Y: f32,
+    Z: f32,
+}
+struct BRSavedComponentChunkSoA {
+    ComponentTypeCounters: BRSavedBrickComponentTypeCounter[],
+    ComponentBrickIndices: u32[],
+    JointBrickIndices: u32[],
+    JointEntityReferences: u32[],
+    JointInitialRelativeOffsets: Vector3f[flat],
+    JointInitialRelativeRotations: Quat4f[flat],
+}

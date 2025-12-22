@@ -1,0 +1,43 @@
+struct BRSavedBitFlags {
+    Flags: u8[flat],
+}
+struct BRSavedBrickColor {
+    R: u8,
+    G: u8,
+    B: u8,
+    A: u8,
+}
+struct BRSavedBrickSize {
+    X: u16,
+    Y: u16,
+    Z: u16,
+}
+struct BRSavedBrickSizeCounter {
+    AssetIndex: u32,
+    NumSizes: u32,
+}
+struct BRSavedRelativeBrickPosition {
+    X: i16,
+    Y: i16,
+    Z: i16,
+}
+struct BRSavedBrickChunkSoA {
+    ProceduralBrickStartingIndex: u32,
+    BrickSizeCounters: BRSavedBrickSizeCounter[],
+    BrickSizes: BRSavedBrickSize[],
+    BrickTypeIndices: u32[],
+    OwnerIndices: u32[],
+    RelativePositions: BRSavedRelativeBrickPosition[flat],
+    Orientations: u8[flat],
+    CollisionFlags_Player: BRSavedBitFlags,
+    CollisionFlags_Player1: BRSavedBitFlags,
+    CollisionFlags_Player2: BRSavedBitFlags,
+    CollisionFlags_Player3: BRSavedBitFlags,
+    CollisionFlags_Weapon: BRSavedBitFlags,
+    CollisionFlags_Interaction: BRSavedBitFlags,
+    CollisionFlags_Tool: BRSavedBitFlags,
+    CollisionFlags_Physics: BRSavedBitFlags,
+    VisibilityFlags: BRSavedBitFlags,
+    MaterialIndices: u8[flat],
+    ColorsAndAlphas: BRSavedBrickColor[flat],
+}

@@ -1,0 +1,10 @@
+struct BRSavedChunk3DIndex {
+    X: i16,
+    Y: i16,
+    Z: i16,
+}
+struct BRSavedEntityChunkIndexSoA {
+    NextPersistentIndex: u32,
+    Chunk3DIndices: BRSavedChunk3DIndex[],
+    NumEntities: u32[],
+}

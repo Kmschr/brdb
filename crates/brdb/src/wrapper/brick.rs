@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    BrdbSchemaError, assets,
+    BrdbSchemaError, IntVector, assets,
     schema::{
         BrdbSchemaGlobalData, BrdbValue,
         as_brdb::{AsBrdbIter, AsBrdbValue, BrdbArrayIter},
@@ -168,6 +168,9 @@ impl Clone for Brick {
 #[derive(Copy, Clone, Debug)]
 pub struct Collision {
     pub player: bool,
+    pub player1: Option<bool>,
+    pub player2: Option<bool>,
+    pub player3: Option<bool>,
     pub weapon: bool,
     pub interact: bool,
     pub tool: bool,
@@ -178,6 +181,9 @@ impl Default for Collision {
     fn default() -> Self {
         Self {
             player: true,
+            player1: None,
+            player2: None,
+            player3: None,
             weapon: true,
             interact: true,
             tool: true,
@@ -753,6 +759,9 @@ pub struct BrickChunkSoA {
     pub relative_positions: Vec<RelativePosition>,
     pub orientations: Vec<u8>,
     pub collision_flags_player: BitFlags,
+    pub collision_flags_player1: BitFlags,
+    pub collision_flags_player2: BitFlags,
+    pub collision_flags_player3: BitFlags,
     pub collision_flags_weapon: BitFlags,
     pub collision_flags_interaction: BitFlags,
     pub collision_flags_tool: BitFlags,
@@ -841,6 +850,12 @@ impl BrickChunkSoA {
             .push(orientation_to_byte(brick.direction, brick.rotation));
 
         self.collision_flags_player.push(brick.collision.player);
+        self.collision_flags_player1
+            .push(brick.collision.player1.unwrap_or(brick.collision.player));
+        self.collision_flags_player2
+            .push(brick.collision.player2.unwrap_or(brick.collision.player));
+        self.collision_flags_player3
+            .push(brick.collision.player3.unwrap_or(brick.collision.player));
         self.collision_flags_weapon.push(brick.collision.weapon);
         self.collision_flags_interaction
             .push(brick.collision.interact);
@@ -920,6 +935,9 @@ impl BrickChunkSoA {
                     rotation,
                     collision: Collision {
                         player: self.collision_flags_player.get(i),
+                        player1: Some(self.collision_flags_player1.get(i)),
+                        player2: Some(self.collision_flags_player2.get(i)),
+                        player3: Some(self.collision_flags_player3.get(i)),
                         weapon: self.collision_flags_weapon.get(i),
                         interact: self.collision_flags_interaction.get(i),
                         tool: self.collision_flags_tool.get(i),
@@ -947,6 +965,9 @@ impl AsBrdbValue for BrickChunkSoA {
         match prop_name.get(schema).unwrap() {
             "ProceduralBrickStartingIndex" => Ok(&self.procedural_brick_starting_index),
             "CollisionFlags_Player" => Ok(&self.collision_flags_player),
+            "CollisionFlags_Player1" => Ok(&self.collision_flags_player1),
+            "CollisionFlags_Player2" => Ok(&self.collision_flags_player2),
+            "CollisionFlags_Player3" => Ok(&self.collision_flags_player3),
             "CollisionFlags_Weapon" => Ok(&self.collision_flags_weapon),
             "CollisionFlags_Interaction" => Ok(&self.collision_flags_interaction),
             "CollisionFlags_Tool" => Ok(&self.collision_flags_tool),
@@ -980,6 +1001,7 @@ impl TryFrom<&BrdbValue> for BrickChunkSoA {
     type Error = crate::errors::BrdbSchemaError;
 
     fn try_from(value: &BrdbValue) -> Result<Self, Self::Error> {
+        let collision_flags_player: BitFlags = value.prop("CollisionFlags_Player")?.try_into()?;
         let mut base = BrickChunkSoA {
             procedural_brick_starting_index: value
                 .prop("ProceduralBrickStartingIndex")?
@@ -990,7 +1012,25 @@ impl TryFrom<&BrdbValue> for BrickChunkSoA {
             owner_indices: value.prop("OwnerIndices")?.try_into()?,
             relative_positions: value.prop("RelativePositions")?.try_into()?,
             orientations: value.prop("Orientations")?.try_into()?,
-            collision_flags_player: value.prop("CollisionFlags_Player")?.try_into()?,
+
+            // Handle migration for per-player collision flags
+            collision_flags_player1: if value.contains_key("CollisionFlags_Player1") {
+                value.prop("CollisionFlags_Player1")?.try_into()?
+            } else {
+                collision_flags_player.clone()
+            },
+            collision_flags_player2: if value.contains_key("CollisionFlags_Player2") {
+                value.prop("CollisionFlags_Player2")?.try_into()?
+            } else {
+                collision_flags_player.clone()
+            },
+            collision_flags_player3: if value.contains_key("CollisionFlags_Player3") {
+                value.prop("CollisionFlags_Player3")?.try_into()?
+            } else {
+                collision_flags_player.clone()
+            },
+            collision_flags_player,
+
             collision_flags_weapon: value.prop("CollisionFlags_Weapon")?.try_into()?,
             collision_flags_interaction: value.prop("CollisionFlags_Interaction")?.try_into()?,
             collision_flags_tool: value.prop("CollisionFlags_Tool")?.try_into()?,
@@ -1022,6 +1062,8 @@ impl TryFrom<&BrdbValue> for BrickChunkSoA {
 #[derive(Default)]
 pub struct BrickChunkIndexSoA {
     pub chunk_3d_indices: Vec<ChunkIndex>,
+    pub chunk_offsets: Vec<IntVector>,
+    pub chunk_sizes: Vec<i32>,
     pub num_bricks: Vec<u32>,
     pub num_components: Vec<u32>,
     pub num_wires: Vec<u32>,
@@ -1036,6 +1078,8 @@ impl AsBrdbValue for BrickChunkIndexSoA {
     ) -> Result<BrdbArrayIter, crate::errors::BrdbSchemaError> {
         match prop_name.get(schema).unwrap() {
             "Chunk3DIndices" => Ok(self.chunk_3d_indices.as_brdb_iter()),
+            "ChunkOffsets" => Ok(self.chunk_offsets.as_brdb_iter()),
+            "ChunkSizes" => Ok(self.chunk_sizes.as_brdb_iter()),
             "NumBricks" => Ok(self.num_bricks.as_brdb_iter()),
             "NumComponents" => Ok(self.num_components.as_brdb_iter()),
             "NumWires" => Ok(self.num_wires.as_brdb_iter()),

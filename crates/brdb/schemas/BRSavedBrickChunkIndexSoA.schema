@@ -1,0 +1,18 @@
+struct BRSavedChunk3DIndex {
+    X: i16,
+    Y: i16,
+    Z: i16,
+}
+struct IntVector {
+    X: i32,
+    Y: i32,
+    Z: i32,
+}
+struct BRSavedBrickChunkIndexSoA {
+    Chunk3DIndices: BRSavedChunk3DIndex[],
+    ChunkOffsets: IntVector[],
+    ChunkSizes: i32[],
+    NumBricks: u32[],
+    NumComponents: u32[],
+    NumWires: u32[],
+}
