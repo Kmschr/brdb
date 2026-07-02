@@ -1033,7 +1033,13 @@ impl TryFrom<&BrdbValue> for BrickChunkSoA {
 
             collision_flags_weapon: value.prop("CollisionFlags_Weapon")?.try_into()?,
             collision_flags_interaction: value.prop("CollisionFlags_Interaction")?.try_into()?,
-            collision_flags_tool: value.prop("CollisionFlags_Tool")?.try_into()?,
+
+            // Newer save formats dropped the per-brick tool collision flag
+            collision_flags_tool: if value.contains_key("CollisionFlags_Tool") {
+                value.prop("CollisionFlags_Tool")?.try_into()?
+            } else {
+                BitFlags::default()
+            },
             collision_flags_physics: value.prop("CollisionFlags_Physics")?.try_into()?,
             visibility_flags: value.prop("VisibilityFlags")?.try_into()?,
             material_indices: value.prop("MaterialIndices")?.try_into()?,

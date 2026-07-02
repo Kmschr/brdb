@@ -70,6 +70,53 @@ pub trait BrFsReader {
         Ok(None)
     }
 
+    /// Find a file by its path in the brdb filesystem as it existed at a specific revision date,
+    /// returning FoundFile if found. Unlike [`find_file_by_path`], the final path component is
+    /// resolved to the version that was live at `date` rather than the latest version. This matters
+    /// for schema files, which are re-written when the save format changes: an old chunk must be
+    /// decoded with the schema that was live when the chunk was written, not the latest schema.
+    ///
+    /// [`find_file_by_path`]: BrFsReader::find_file_by_path
+    fn find_file_by_path_at_revision(
+        &self,
+        path: impl Display,
+        date: i64,
+    ) -> Result<Option<FoundFile>, BrFsError> {
+        let path = path.to_string();
+
+        if path.starts_with("/") {
+            return Err(BrFsError::AbsolutePathNotAllowed);
+        }
+
+        let mut components = path.split("/").peekable();
+        let mut entire_path = String::from("");
+        let mut parent_id = None;
+
+        while let Some(name) = components.next() {
+            entire_path.push('/');
+            entire_path.push_str(name);
+
+            // If there is more in the path, the current component must be a folder
+            if components.peek().is_some() {
+                let Some(next) = self
+                    .find_folder(parent_id, name)
+                    .map_err(|e| e.wrap(format!("find folder {entire_path}")))?
+                else {
+                    return Ok(None);
+                };
+                parent_id = Some(next);
+                continue;
+            }
+
+            // Find the file version that was live at the given revision date
+            return self
+                .find_file_at_revision(parent_id, name, date)
+                .map_err(|e| e.wrap(format!("find file {entire_path}")));
+        }
+
+        Ok(None)
+    }
+
     /// Find and read a file from the brdb filesystem, returning its decompressed content as a byte vector.
     fn read_file(&self, path: impl Display) -> Result<Vec<u8>, BrFsError> {
         let path_str = path.to_string();

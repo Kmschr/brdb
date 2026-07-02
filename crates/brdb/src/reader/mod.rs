@@ -129,9 +129,11 @@ impl<T> BrReader<T> {
             return Ok(schema.clone());
         }
 
-        // Load the schema file
+        // Load the schema version that was live at this revision. Schema files are re-written when
+        // the save format changes, so an old chunk must be decoded with the schema that was live
+        // when it was written, not the latest schema.
         let schema_file = self
-            .find_file_by_path(path)?
+            .find_file_by_path_at_revision(path, revision)?
             .ok_or(BrError::Fs(BrFsError::NotFound(path.to_string())))?;
 
         let schema_data = self.find_blob(schema_file.blob_id)?.read()?;
