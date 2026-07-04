@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use indexmap::IndexMap;
 
 use crate::{
@@ -53,28 +51,11 @@ impl World {
     // Write a world to a brz in memory
     #[cfg(feature = "brz")]
     pub fn to_brz_vec(&self) -> Result<Vec<u8>, BrError> {
-        use std::time::Instant;
-        let t0 = Instant::now();
-
         let unsaved = self.to_unsaved()?;
-        eprintln!("[brdb] to_unsaved: {:.2}s", t0.elapsed().as_secs_f64());
-
-        let t1 = Instant::now();
         let pending = unsaved.to_pending()?;
-        eprintln!("[brdb] to_pending: {:.2}s", t1.elapsed().as_secs_f64());
-
-        let t2 = Instant::now();
         let brz = pending.to_brz_data(Some(3))?;
-        eprintln!("[brdb] to_brz_data: {:.2}s", t2.elapsed().as_secs_f64());
-
-        let t3 = Instant::now();
         let mut data = Vec::new();
         brz.write(&mut data, Some(3))?;
-        eprintln!(
-            "[brdb] write: {:.2}s, total: {:.2}s",
-            t3.elapsed().as_secs_f64(),
-            t0.elapsed().as_secs_f64()
-        );
         Ok(data)
     }
 
@@ -280,22 +261,10 @@ impl World {
             // register_all_components); add_bricks_to_grid surfaces a clear
             // error if one isn't, instead of panicking in the SoA builder.
             world.add_bricks_to_grid(1, &self.bricks)?;
-            let t0 = Instant::now();
             for (entity, bricks) in &self.grids {
                 let grid_id = world.add_entity(entity);
                 world.add_bricks_to_grid(grid_id, bricks)?;
             }
-
-            let brick_count =
-                self.bricks.len() + self.grids.iter().map(|(_, b)| b.len()).sum::<usize>();
-            eprintln!(
-                "[brdb:to_unsaved] add_bricks_to_grid: {:.2}s ({} grids, {} bricks)",
-                t0.elapsed().as_secs_f64(),
-                self.grids.len() + 1,
-                brick_count,
-            );
-
-            let t1 = Instant::now();
 
             // Add all non-grid entities
             for entity in &self.entities {
@@ -309,24 +278,11 @@ impl World {
                     .map_err(|e| e.wrap(format!("microchip link brick={brick_id}")))?;
             }
 
-            eprintln!(
-                "[brdb:to_unsaved] entities+links: {:.2}s",
-                t1.elapsed().as_secs_f64()
-            );
-
-            let t2 = Instant::now();
-
             for (i, wire) in self.wires.iter().enumerate() {
                 world
                     .add_wire(wire)
                     .map_err(|e| e.wrap(format!("wire {i}: {wire}")))?;
             }
-
-            eprintln!(
-                "[brdb:to_unsaved] add_wire: {:.2}s ({} wires)",
-                t2.elapsed().as_secs_f64(),
-                self.wires.len(),
-            );
 
             // Add the world
             unsaved_fs.worlds.insert(0, world);
