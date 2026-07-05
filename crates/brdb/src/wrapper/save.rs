@@ -8,9 +8,9 @@ use crate::{
     schemas::{BRICK_CHUNK_INDEX_SOA, BRICK_CHUNK_SOA, BRICK_WIRE_SOA},
     wrapper::{
         Brick, BrickChunkIndexSoA, BrickChunkSoA, CHUNK_HALF, CHUNK_SIZE, ChunkIndex,
-        ComponentChunkSoA, Entity, EntityChunkIndexSoA, EntityChunkSoA,
-        LocalWirePortSource, OwnerTableSoA, RemoteWirePortSource, WireChunkSoA, WireConnection,
-        WirePortTarget, WorldMeta, schemas,
+        ComponentChunkSoA, Entity, EntityChunkIndexSoA, EntityChunkSoA, LocalWirePortSource,
+        OwnerTableSoA, RemoteWirePortSource, WireChunkSoA, WireConnection, WirePortTarget,
+        WorldMeta, schemas,
     },
 };
 
@@ -121,6 +121,14 @@ impl UnsavedWorld {
             if let Some(id) = b.id {
                 self.brick_id_map
                     .insert(id, (grid_id, chunk_index, brick_index));
+            }
+        }
+
+        // The game writes ChunkOffsets (0,0,0) for every MAIN-grid chunk;
+        // anything else displaces bricks across chunk borders in-game.
+        if grid_id == 1 {
+            for off in grid.chunk_index.chunk_offsets.iter_mut() {
+                *off = crate::IntVector { x: 0, y: 0, z: 0 };
             }
         }
 
@@ -301,13 +309,11 @@ impl UnsavedGrid {
         } else {
             self.chunk_index.chunk_3d_indices.push(chunk_index);
             // ChunkOffsets and ChunkSizes must always be kept in sync with
-            // chunk_3d_indices. Chunk (0,0,0) uses offset (0,0,0);
-            // non-zero chunks use (CHUNK_HALF, CHUNK_HALF, CHUNK_HALF).
-            let off = if chunk_index == ChunkIndex::ZERO {
-                0
-            } else {
-                CHUNK_HALF
-            };
+            // chunk_3d_indices. The game writes (CHUNK_HALF)^3 for every
+            // sub-grid chunk and (0,0,0) for every main-grid chunk,
+            // regardless of coordinate (surveyed across game-authored
+            // worlds); the main grid is zeroed in `add_bricks_to_grid`.
+            let off = CHUNK_HALF;
             self.chunk_index.chunk_offsets.push(crate::IntVector {
                 x: off,
                 y: off,
