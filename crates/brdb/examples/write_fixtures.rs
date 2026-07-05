@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use brdb::fs::BrFs;
 use brdb::schema::WireVariant;
 use brdb::{
-    assets, schemas, AsBrdbValue, BrFsReader, Brick, BrickSize, BrickType, Brz,
+    assets, schemas, AsBrdbValue, BrFsReader, Brdb, Brick, BrickSize, BrickType, Brz,
     Collision, Direction, Entity, Guid, IntoReader, Owner, Rotation, SavedBrickColor, World,
 };
 
@@ -411,6 +411,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // compressed variant: zstd level 14 (matches Brz::save)
         let mut f = fs::File::create(dir.join(format!("{name}.brz")))?;
         pending.to_brz_data(Some(14))?.write(&mut f, Some(14))?;
+
+        // .brdb variant: content parity only (the .brdb container is not
+        // byte-deterministic across runs).
+        let db_path = dir.join(format!("{name}.brdb"));
+        let _ = fs::remove_file(&db_path);
+        Brdb::create(&db_path)?.save("Fixture", &world)?;
 
         hashes.insert(name.to_string(), hash_archive(&raw_path)?);
     }

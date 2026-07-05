@@ -9,7 +9,7 @@ The `.brz` format is described in [Zeblote's Brickadia brz Gist](https://gist.gi
 ## Implementations
 
 - Rust [brdb](./crates/brdb)
-- JS/TS: TODO
+- JS/TS: [brs-js](https://github.com/brickadia-community/brs-js)
 
 ## Format
 
