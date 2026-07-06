@@ -112,9 +112,13 @@ fn write_wire_var(buf: &mut impl Write, v: &WireVariant) -> Result<(), BrdbSchem
         WireVariant::Exec => {
             write_uint(buf, 4)?;
         }
-        // The legacy union has no string or vector members (those are only in
-        // the newer named `WireGraphVariant` table).
-        WireVariant::Str(_) | WireVariant::Vector(_) => {
+        // The legacy union has no string/vector/rotator/quat/color members
+        // (those are only in the newer named `WireGraphVariant` table).
+        WireVariant::Str(_)
+        | WireVariant::Vector(_)
+        | WireVariant::Rotator { .. }
+        | WireVariant::Quat { .. }
+        | WireVariant::LinearColor { .. } => {
             return Err(BrdbSchemaError::ExpectedType(
                 "wire_graph_variant".to_owned(),
                 v.to_string(),
@@ -157,7 +161,10 @@ fn write_named_wire_variant(
         WireVariant::Object(_) => "weak_object",
         WireVariant::Exec => "WireGraphExec",
         WireVariant::Vector(..) => "Vector",
+        WireVariant::Rotator { .. } => "Rotator",
+        WireVariant::Quat { .. } => "Quat",
         WireVariant::Str(_) => "str",
+        WireVariant::LinearColor { .. } => "LinearColor",
     };
     let tag = variant_member_tag(schema, variant_ty, member_name)?;
     write_uint(buf, tag as u64)?;
@@ -174,7 +181,27 @@ fn write_named_wire_variant(
             write_float64(buf, v.y as f64)?;
             write_float64(buf, v.z as f64)?;
         }
+        // Rotator is a struct {Pitch, Yaw, Roll: f64}.
+        WireVariant::Rotator { pitch, yaw, roll } => {
+            write_float64(buf, *pitch)?;
+            write_float64(buf, *yaw)?;
+            write_float64(buf, *roll)?;
+        }
+        // Quat is a struct {X, Y, Z, W: f64}.
+        WireVariant::Quat { x, y, z, w } => {
+            write_float64(buf, *x)?;
+            write_float64(buf, *y)?;
+            write_float64(buf, *z)?;
+            write_float64(buf, *w)?;
+        }
         WireVariant::Str(s) => write_str(buf, s)?,
+        // LinearColor is a struct {R, G, B, A: f32}.
+        WireVariant::LinearColor { r, g, b, a } => {
+            write_float32(buf, *r)?;
+            write_float32(buf, *g)?;
+            write_float32(buf, *b)?;
+            write_float32(buf, *a)?;
+        }
     }
     Ok(())
 }
@@ -225,10 +252,36 @@ fn write_named_array_variant(
                 write_float64(buf, vec.z as f64)?;
             }
         }
+        WireArrayVariant::RotatorArray(v) => {
+            rmp::encode::write_array_len(buf, v.len() as u32)?;
+            for (pitch, yaw, roll) in v {
+                write_float64(buf, *pitch)?;
+                write_float64(buf, *yaw)?;
+                write_float64(buf, *roll)?;
+            }
+        }
+        WireArrayVariant::QuatArray(v) => {
+            rmp::encode::write_array_len(buf, v.len() as u32)?;
+            for (x, y, z, w) in v {
+                write_float64(buf, *x)?;
+                write_float64(buf, *y)?;
+                write_float64(buf, *z)?;
+                write_float64(buf, *w)?;
+            }
+        }
         WireArrayVariant::StringArray(v) => {
             rmp::encode::write_array_len(buf, v.len() as u32)?;
             for s in v {
                 write_str(buf, s)?;
+            }
+        }
+        WireArrayVariant::LinearColorArray(v) => {
+            rmp::encode::write_array_len(buf, v.len() as u32)?;
+            for (r, g, b, a) in v {
+                write_float32(buf, *r)?;
+                write_float32(buf, *g)?;
+                write_float32(buf, *b)?;
+                write_float32(buf, *a)?;
             }
         }
     }

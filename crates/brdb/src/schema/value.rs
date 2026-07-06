@@ -180,8 +180,8 @@ pub enum BrdbValue {
 
 /// A wire graph variant value. The members mirror the engine's
 /// `WireGraphVariant` union (`f64`, `i64`, `bool`, `weak_object`,
-/// `WireGraphExec`, `Vector`, `str`); `WireGraphPrimMathVariant` uses the
-/// `Number`/`Int`/`Vector` subset.
+/// `WireGraphExec`, `Vector`, `Rotator`, `Quat`, `str`, `LinearColor`);
+/// `WireGraphPrimMathVariant` uses the numeric/spatial subset.
 #[derive(Clone, Debug)]
 pub enum WireVariant {
     Number(f64),
@@ -193,8 +193,14 @@ pub enum WireVariant {
     Exec,
     /// `Vector` member (X, Y, Z).
     Vector(Vector3f),
+    /// `Rotator` member (Pitch, Yaw, Roll — f64 degrees).
+    Rotator { pitch: f64, yaw: f64, roll: f64 },
+    /// `Quat` member (X, Y, Z, W — f64).
+    Quat { x: f64, y: f64, z: f64, w: f64 },
     /// `str` member: a string value.
     Str(String),
+    /// `LinearColor` member (R, G, B, A — f32, linear 0–1).
+    LinearColor { r: f32, g: f32, b: f32, a: f32 },
 }
 impl Default for WireVariant {
     fn default() -> Self {
@@ -211,7 +217,14 @@ impl Display for WireVariant {
             WireVariant::Object(None) => write!(f, "obj#null"),
             WireVariant::Exec => write!(f, "exec"),
             WireVariant::Vector(v) => write!(f, "({}, {}, {})", v.x, v.y, v.z),
+            WireVariant::Rotator { pitch, yaw, roll } => {
+                write!(f, "rot({pitch}, {yaw}, {roll})")
+            }
+            WireVariant::Quat { x, y, z, w } => write!(f, "quat({x}, {y}, {z}, {w})"),
             WireVariant::Str(s) => write!(f, "{s:?}"),
+            WireVariant::LinearColor { r, g, b, a } => {
+                write!(f, "color({r}, {g}, {b}, {a})")
+            }
         }
     }
 }
@@ -305,8 +318,14 @@ pub enum WireArrayVariant {
     ObjectArray(Vec<Option<usize>>),
     /// `WireGraphVectorArray`
     VectorArray(Vec<Vector3f>),
+    /// `WireGraphRotatorArray` — (Pitch, Yaw, Roll) f64 elements.
+    RotatorArray(Vec<(f64, f64, f64)>),
+    /// `WireGraphQuatArray` — (X, Y, Z, W) f64 elements.
+    QuatArray(Vec<(f64, f64, f64, f64)>),
     /// `WireGraphStringArray`
     StringArray(Vec<String>),
+    /// `WireGraphLinearColorArray` — (R, G, B, A) f32 elements, linear 0–1.
+    LinearColorArray(Vec<(f32, f32, f32, f32)>),
 }
 
 impl WireArrayVariant {
@@ -318,7 +337,10 @@ impl WireArrayVariant {
             WireArrayVariant::BoolArray(_) => "WireGraphBoolArray",
             WireArrayVariant::ObjectArray(_) => "WireGraphObjectArray",
             WireArrayVariant::VectorArray(_) => "WireGraphVectorArray",
+            WireArrayVariant::RotatorArray(_) => "WireGraphRotatorArray",
+            WireArrayVariant::QuatArray(_) => "WireGraphQuatArray",
             WireArrayVariant::StringArray(_) => "WireGraphStringArray",
+            WireArrayVariant::LinearColorArray(_) => "WireGraphLinearColorArray",
         }
     }
 }
@@ -373,6 +395,47 @@ impl TryFrom<&BrdbValue> for WireArrayVariant {
             ),
             "WireGraphVectorArray" => WireArrayVariant::VectorArray(
                 values.iter().map(Vector3f::try_from).collect::<Result<_, _>>()?,
+            ),
+            "WireGraphRotatorArray" => WireArrayVariant::RotatorArray(
+                values
+                    .iter()
+                    .map(|v| {
+                        let s = v.as_struct()?;
+                        Ok((
+                            s.prop("Pitch")?.as_brdb_f64()?,
+                            s.prop("Yaw")?.as_brdb_f64()?,
+                            s.prop("Roll")?.as_brdb_f64()?,
+                        ))
+                    })
+                    .collect::<Result<_, BrdbSchemaError>>()?,
+            ),
+            "WireGraphQuatArray" => WireArrayVariant::QuatArray(
+                values
+                    .iter()
+                    .map(|v| {
+                        let s = v.as_struct()?;
+                        Ok((
+                            s.prop("X")?.as_brdb_f64()?,
+                            s.prop("Y")?.as_brdb_f64()?,
+                            s.prop("Z")?.as_brdb_f64()?,
+                            s.prop("W")?.as_brdb_f64()?,
+                        ))
+                    })
+                    .collect::<Result<_, BrdbSchemaError>>()?,
+            ),
+            "WireGraphLinearColorArray" => WireArrayVariant::LinearColorArray(
+                values
+                    .iter()
+                    .map(|v| {
+                        let s = v.as_struct()?;
+                        Ok((
+                            s.prop("R")?.as_brdb_f32()?,
+                            s.prop("G")?.as_brdb_f32()?,
+                            s.prop("B")?.as_brdb_f32()?,
+                            s.prop("A")?.as_brdb_f32()?,
+                        ))
+                    })
+                    .collect::<Result<_, BrdbSchemaError>>()?,
             ),
             "WireGraphObjectArray" => WireArrayVariant::ObjectArray(
                 values
@@ -508,7 +571,14 @@ impl BrdbValue {
                 WireVariant::Object(o) => format!("wire obj#{o:?}"),
                 WireVariant::Exec => "w exec".to_string(),
                 WireVariant::Vector(v) => format!("wire ({}, {}, {})", v.x, v.y, v.z),
+                WireVariant::Rotator { pitch, yaw, roll } => {
+                    format!("wire rot({pitch}, {yaw}, {roll})")
+                }
+                WireVariant::Quat { x, y, z, w } => format!("wire quat({x}, {y}, {z}, {w})"),
                 WireVariant::Str(s) => format!("wire {s:?}"),
+                WireVariant::LinearColor { r, g, b, a } => {
+                    format!("wire color({r}, {g}, {b}, {a})")
+                }
             },
             BrdbValue::String(v) => format!("\"{v}\""),
             BrdbValue::Asset(None) => "none".to_string(),
@@ -623,7 +693,24 @@ impl Hash for BrdbValue {
                     v.y.to_bits().hash(state);
                     v.z.to_bits().hash(state);
                 }
+                WireVariant::Rotator { pitch, yaw, roll } => {
+                    pitch.to_bits().hash(state);
+                    yaw.to_bits().hash(state);
+                    roll.to_bits().hash(state);
+                }
+                WireVariant::Quat { x, y, z, w } => {
+                    x.to_bits().hash(state);
+                    y.to_bits().hash(state);
+                    z.to_bits().hash(state);
+                    w.to_bits().hash(state);
+                }
                 WireVariant::Str(s) => s.hash(state),
+                WireVariant::LinearColor { r, g, b, a } => {
+                    r.to_bits().hash(state);
+                    g.to_bits().hash(state);
+                    b.to_bits().hash(state);
+                    a.to_bits().hash(state);
+                }
             },
         }
     }
