@@ -140,6 +140,7 @@ pub static COMPONENT_TYPE_STRUCT_PAIRS: &[(&str, &str)] = &[
     ("BrickComponentType_WireGraph_Expr_BitwiseXOR", "BrickComponentData_WireGraph_Expr_IntInt_Int"),
     ("BrickComponentType_WireGraph_Expr_Ceil", "BrickComponentData_WireGraph_Expr_Float_Float"),
     ("BrickComponentType_WireGraph_Expr_ChangeDetector", "BrickComponentData_WireGraph_Expr_ChangeDetector"),
+    ("BrickComponentType_WireGraph_Expr_ChangeDetectorExec", "BrickComponentData_WireGraph_Expr_ChangeDetectorExec"),
     ("BrickComponentType_WireGraph_Expr_ColorBlend", "BrickComponentData_WireGraph_Expr_ColorBlend"),
     ("BrickComponentType_WireGraph_Expr_ColorConvert", "BrickComponentData_WireGraph_Expr_ColorConvert"),
     ("BrickComponentType_WireGraph_Expr_ColorToHex", "BrickComponentData_WireGraph_Expr_ColorToHex"),
@@ -152,6 +153,7 @@ pub static COMPONENT_TYPE_STRUCT_PAIRS: &[(&str, &str)] = &[
     ("BrickComponentType_WireGraph_Expr_Convert", "BrickComponentData_WireGraph_Expr_Convert"),
     ("BrickComponentType_WireGraph_Expr_DirectionToRotation", "BrickComponentData_WireGraph_Expr_DirectionToRotation"),
     ("BrickComponentType_WireGraph_Expr_EdgeDetector", "BrickComponentData_WireGraph_Expr_EdgeDetector"),
+    ("BrickComponentType_WireGraph_Expr_EdgeDetectorExec", "BrickComponentData_WireGraph_Expr_EdgeDetectorExec"),
     ("BrickComponentType_WireGraph_Expr_Floor", "BrickComponentData_WireGraph_Expr_Float_Float"),
     ("BrickComponentType_WireGraph_Expr_InvertRotation", "BrickComponentData_WireGraph_Expr_InvertRotation"),
     ("BrickComponentType_WireGraph_Expr_LogicalAND", "BrickComponentData_WireGraph_Expr_BoolBool_Bool"),
@@ -822,6 +824,9 @@ pub static WIRE_PORT_NAMES: &[&str] = &[
     "bPinned",
     "bPositionsArePercentages",
     "bPressedJump",
+    "bPulseOnChange",
+    "bPulseOnFallingEdge",
+    "bPulseOnRisingEdge",
     "bRelative",
     "bRenderTranslucentWhenDisabled",
     "bReversed",
@@ -1003,7 +1008,7 @@ pub static STRUCT_DEFAULTS: LazyLock<Vec<(&'static str, Vec<(&'static str, Box<d
             ("PickupSpinSpeed", Box::new(0.2f32)),
             ("PickupBobSpeed", Box::new(0.1f32)),
             ("PickupBobHeight", Box::new(4.0f32)),
-            ("PickupAnimationPhase", Box::new(0.81154823f32)),
+            ("PickupAnimationPhase", Box::new(0.6645405f32)),
         ]),
         ("BrickComponentData_Joint_Wheel", vec![
             ("bEnabled", Box::new(true)),
@@ -1505,6 +1510,9 @@ pub static STRUCT_DEFAULTS: LazyLock<Vec<(&'static str, Vec<(&'static str, Box<d
         ("BrickComponentData_WireGraph_Expr_Bool_Bool", vec![
             ("bInput", Box::new(false)),
         ]),
+        ("BrickComponentData_WireGraph_Expr_ChangeDetector", vec![
+            ("bPulseOnChange", Box::new(false)),
+        ]),
         ("BrickComponentData_WireGraph_Expr_ColorBlend", vec![
             ("Alpha", Box::new(0.5f64)),
             ("BlendSpace", Box::new(0u8)),
@@ -1515,6 +1523,11 @@ pub static STRUCT_DEFAULTS: LazyLock<Vec<(&'static str, Vec<(&'static str, Box<d
             ("ToSpace", Box::new(0u8)),
         ]),
         ("BrickComponentData_WireGraph_Expr_EdgeDetector", vec![
+            ("Input", Box::new(0.0f64)),
+            ("bPulseOnRisingEdge", Box::new(false)),
+            ("bPulseOnFallingEdge", Box::new(false)),
+        ]),
+        ("BrickComponentData_WireGraph_Expr_EdgeDetectorExec", vec![
             ("Input", Box::new(0.0f64)),
         ]),
         ("BrickComponentData_WireGraph_Expr_Float_Float", vec![
