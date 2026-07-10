@@ -453,8 +453,7 @@ impl TryFrom<BrdbValue> for SavedBrickColor {
     }
 }
 
-#[derive(Clone, Debug, PartialOrd, Eq, PartialEq)]
-
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BrickType {
     Basic(BString),
     Procedural { asset: BString, size: BrickSize },
@@ -520,6 +519,12 @@ impl Ord for BrickType {
                 ord => ord,
             },
         }
+    }
+}
+
+impl PartialOrd for BrickType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
