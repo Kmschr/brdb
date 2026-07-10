@@ -160,10 +160,11 @@ fn read_struct_property(
     match prop {
         BrdbSchemaStructProperty::Type(ty) => read_type(schema, &lookup(*ty)?, buf),
         BrdbSchemaStructProperty::Array(ty) => {
-            let mut values = Vec::new();
             let len = rmp::decode::read_array_len(buf)? as usize;
+            let item_ty = lookup(*ty)?;
+            let mut values = Vec::with_capacity(len);
             for i in 0..len {
-                values.push(read_type(schema, &lookup(*ty)?, buf).map_err(|e| e.wrap(i))?);
+                values.push(read_type(schema, item_ty, buf).map_err(|e| e.wrap(i))?);
             }
             Ok(BrdbValue::Array(values))
         }

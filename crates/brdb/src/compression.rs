@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::Write;
 
 /// Compress the given content using zstd with the specified level.
 pub fn compress(content: &[u8], zstd_level: i32) -> Result<Vec<u8>, std::io::Error> {
@@ -10,7 +10,5 @@ pub fn compress(content: &[u8], zstd_level: i32) -> Result<Vec<u8>, std::io::Err
 }
 
 pub fn decompress(content: &[u8], size_uncompressed: usize) -> Result<Vec<u8>, std::io::Error> {
-    let mut output = vec![0u8; size_uncompressed];
-    zstd::Decoder::new(content)?.read_exact(&mut output)?;
-    Ok(output)
+    zstd::bulk::decompress(content, size_uncompressed)
 }
